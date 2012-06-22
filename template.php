@@ -127,17 +127,25 @@ function open_framework_get_span($block_count, $block_id, $count_sidebars) {
 }
 
 /* Status Messages (Error, Status, Alert) */
-function open_framework_status_messages($display = NULL) {
+function open_framework_status_messages(&$vars) {
+  $display = $vars['display'];
   $output = '';
+
+  $status_heading = array(
+    'status' => t('Status message'),
+    'error' => t('Error message'),
+    'warning' => t('Warning message'),
+  );
   foreach (drupal_get_messages($display) as $type => $messages) {
-	if ($type == "error") {$alert = 'alert alert-error';}
-  	elseif ($type == "status") {$alert = 'alert alert-success';}
-    else {$alert = 'alert';}
-    $output .= "<div class=\"messages $type " . $alert . " \">\n";
+    $output .= "<div class=\"alert alert-block alert-$type\">\n";
+    $output .= "  <a class=\"close\" data-dismiss=\"alert\" href=\"#\">x</a>\n";
+    if (!empty($status_heading[$type])) {
+      $output .= '<h4 class="alert-heading">' . $status_heading[$type] . "</h4>\n";
+    }
     if (count($messages) > 1) {
       $output .= " <ul>\n";
       foreach ($messages as $message) {
-        $output .= '  <li>'. $message ."</li>\n";
+        $output .= '  <li>' . $message . "</li>\n";
       }
       $output .= " </ul>\n";
     }
@@ -150,8 +158,14 @@ function open_framework_status_messages($display = NULL) {
 }
 
 /* Pager and Pagination */
-function open_framework_pager($tags = array(), $limit = 10, $element = 0, $parameters = array(), $quantity = 9) {
+function open_framework_pager(&$variables) {
+  $output = "";
+  $tags = $variables['tags'];
+  $element = $variables['element'];
+  $parameters = $variables['parameters'];
+  $quantity = $variables['quantity'];
   global $pager_page_array, $pager_total;
+
   // Calculate various markers within this pager piece:
   // Middle is used to "center" pages around the current page.
   $pager_middle = ceil($quantity / 2);
@@ -164,6 +178,7 @@ function open_framework_pager($tags = array(), $limit = 10, $element = 0, $param
   // max is the maximum page number
   $pager_max = $pager_total[$element];
   // End of marker calculations.
+
   // Prepare for generation loop.
   $i = $pager_first;
   if ($pager_last > $pager_max) {
@@ -176,73 +191,90 @@ function open_framework_pager($tags = array(), $limit = 10, $element = 0, $param
     $pager_last = $pager_last + (1 - $i);
     $i = 1;
   }
+
   // End of generation loop preparation.
-  $li_first = theme('pager_first', (isset($tags[0]) ? $tags[0] : t('« first')), $limit, $element, $parameters);
-  $li_previous = theme('pager_previous', (isset($tags[1]) ? $tags[1] : t('‹ previous')), $limit, $element, 1, $parameters);
-  $li_next = theme('pager_next', (isset($tags[3]) ? $tags[3] : t('next ›')), $limit, $element, 1, $parameters);
-  $li_last = theme('pager_last', (isset($tags[4]) ? $tags[4] : t('last »')), $limit, $element, $parameters);
+  $li_first = theme('pager_first', array('text' => (isset($tags[0]) ? $tags[0] : t('first')), 'element' => $element, 'parameters' => $parameters));
+  $li_previous = theme('pager_previous', array('text' => (isset($tags[1]) ? $tags[1] : t('previous')), 'element' => $element, 'interval' => 1, 'parameters' => $parameters));
+  $li_next = theme('pager_next', array('text' => (isset($tags[3]) ? $tags[3] : t('next')), 'element' => $element, 'interval' => 1, 'parameters' => $parameters));
+  $li_last = theme('pager_last', array('text' => (isset($tags[4]) ? $tags[4] : t('last')), 'element' => $element, 'parameters' => $parameters));
+
   if ($pager_total[$element] > 1) {
+    
     if ($li_first) {
       $items[] = array(
-        'class' => '',
+        'class' => array('pager-first'), 
         'data' => $li_first,
       );
     }
+    
     if ($li_previous) {
       $items[] = array(
-        'class' => '',
+        'class' => array('prev'), 
         'data' => $li_previous,
       );
     }
+
     // When there is more than one page, create the pager list.
     if ($i != $pager_max) {
+      /*
       if ($i > 1) {
         $items[] = array(
-          'class' => 'disabled',
-          'data' => '<a href="#">…</a>',
+          'class' => array('pager-ellipsis'), 
+          'data' => '…',
         );
       }
+      */
       // Now generate the actual pager piece.
       for (; $i <= $pager_last && $i <= $pager_max; $i++) {
         if ($i < $pager_current) {
           $items[] = array(
-            'class' => '',
-            'data' => theme('pager_previous', $i, $limit, $element, ($pager_current - $i), $parameters),
+           // 'class' => array('pager-item'), 
+            'data' => theme('pager_previous', array('text' => $i, 'element' => $element, 'interval' => ($pager_current - $i), 'parameters' => $parameters)),
           );
         }
         if ($i == $pager_current) {
           $items[] = array(
-            'class' => 'active',
-            'data' => '<a href="#">' . $i . '</a>',
+            'class' => array('active'), // Add the active class 
+            'data' => l($i, '#', array('fragment' => '','external' => TRUE)),
           );
         }
         if ($i > $pager_current) {
           $items[] = array(
-            'class' => '',
-            'data' => theme('pager_next', $i, $limit, $element, ($i - $pager_current), $parameters),
+            //'class' => array('pager-item'), 
+            'data' => theme('pager_next', array('text' => $i, 'element' => $element, 'interval' => ($i - $pager_current), 'parameters' => $parameters)),
           );
         }
       }
+      /*
       if ($i < $pager_max) {
         $items[] = array(
-          'class' => 'disabled',
-          'data' => '<a href="#">…</a>',
+          'class' => array('pager-ellipsis'), 
+          'data' => '…',
         );
       }
+      */
     }
     // End generation.
     if ($li_next) {
       $items[] = array(
-        'class' => 'pager-next',
+        'class' => array('next'), 
         'data' => $li_next,
       );
     }
+    
     if ($li_last) {
       $items[] = array(
-        'class' => 'pager-last',
+        'class' => array('pager-last'), 
         'data' => $li_last,
       );
     }
-    return '<div class="pagination pagination-centered">' . theme('item_list', $items, NULL, 'ul', array('class' => '')) . '</div>';
+    
+
+    return '<div class="pagination">'. theme('item_list', array(
+      'items' => $items, 
+      //'attributes' => array('class' => array('pager')),
+    )) . '</div>';
   }
+  
+  return $output;
 }
